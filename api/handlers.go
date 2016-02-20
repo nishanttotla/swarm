@@ -291,9 +291,30 @@ func getVolume(c *context, w http.ResponseWriter, r *http.Request) {
 
 // GET /volumes
 func getVolumes(c *context, w http.ResponseWriter, r *http.Request) {
-	volumes := struct{ Volumes []*dockerclient.Volume }{}
+	if err := r.ParseForm(); err != nil {
+		httpError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	for _, volume := range c.cluster.Volumes() {
+	filters, err := dockerfilters.FromParam(r.Form.Get("filters"))
+	if err != nil {
+		httpError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	types := filters.Get("dangling")
+	dangling := false
+	for _, typ := range types {
+		if typ != "true" {
+			httpError(w, fmt.Sprintf("Invalid filter: 'type'='%s'", typ), http.StatusBadRequest)
+			return
+		} else {
+			dangling = true
+		}
+	}
+
+	volumes := struct{ Volumes []*dockerclient.Volume }{}
+	for _, volume := range c.cluster.Volumes().Filter(dangling) {
 		tmp := (*volume).Volume
 		if tmp.Driver == "local" {
 			tmp.Name = volume.Engine.Name + "/" + volume.Name

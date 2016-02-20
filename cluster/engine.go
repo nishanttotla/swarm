@@ -15,6 +15,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/docker/pkg/version"
+	engineapi "github.com/docker/engine-api/client"
 	"github.com/samalba/dockerclient"
 	"github.com/samalba/dockerclient/nopclient"
 )
@@ -105,6 +106,7 @@ type Engine struct {
 	networks        map[string]*Network
 	volumes         map[string]*Volume
 	client          dockerclient.Client
+	apiClient       engineapi.APIClient
 	eventHandler    EventHandler
 	state           engineState
 	lastError       string
@@ -160,7 +162,10 @@ func (e *Engine) Connect(config *tls.Config) error {
 		return err
 	}
 
-	return e.ConnectWithClient(c)
+	// TODO need to configure TLS settings to pass to NewClient
+	apiClient, err := engineapi.NewClient(host, "", nil, nil)
+
+	return e.ConnectWithClient(c, apiClient)
 }
 
 // StartMonitorEvents monitors events from the engine
@@ -181,8 +186,9 @@ func (e *Engine) StartMonitorEvents() {
 }
 
 // ConnectWithClient is exported
-func (e *Engine) ConnectWithClient(client dockerclient.Client) error {
+func (e *Engine) ConnectWithClient(client dockerclient.Client, apiClient engineapi.APIClient) error {
 	e.client = client
+	e.apiClient = apiClient
 
 	// Fetch the engine labels.
 	if err := e.updateSpecs(); err != nil {

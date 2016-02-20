@@ -12,6 +12,15 @@ type Volume struct {
 // Volumes represents an array of volumes
 type Volumes []*Volume
 
+// Filter returns networks filtered by names or ids
+func (volumes Volumes) Filter(dangling bool) Volumes {
+	out := Volumes{}
+	for _, volume := range volumes {
+		out = append(out, volume)
+	}
+	return out
+}
+
 // Get returns a volume using it's ID or Name
 func (volumes Volumes) Get(name string) *Volume {
 	// Abort immediately if the name is empty.
