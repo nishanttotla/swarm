@@ -796,6 +796,7 @@ func (c *Cluster) Import(source string, ref string, tag string, imageReader io.R
 
 // Containers returns all the containers in the cluster.
 func (c *Cluster) Containers() cluster.Containers {
+	start := time.Now()
 	c.RLock()
 	defer c.RUnlock()
 
@@ -804,6 +805,8 @@ func (c *Cluster) Containers() cluster.Containers {
 		out = append(out, e.Containers()...)
 	}
 
+	elapsed := time.Since(start)
+	log.Infof("swarm: cluster.Containers(), including locking, took time %s", elapsed.String())
 	return out
 }
 

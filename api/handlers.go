@@ -40,6 +40,7 @@ var (
 
 // GET /info
 func getInfo(c *context, w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	info := apitypes.Info{
 		Images:            len(c.cluster.Images().Filter(cluster.ImageFilterOptions{})),
 		NEventsListener:   c.eventsHandler.Size(),
@@ -96,6 +97,8 @@ func getInfo(c *context, w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(info)
+	elapsed := time.Since(start)
+	log.Infof("swarm: getInfo took time %s", elapsed.String())
 }
 
 // GET /version
@@ -573,21 +576,28 @@ func getContainersJSON(c *context, w http.ResponseWriter, r *http.Request) {
 
 // GET /containers/{name:.*}/json
 func getContainerJSON(c *context, w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	name := mux.Vars(r)["name"]
 	container := c.cluster.Container(name)
 	if container == nil {
 		httpError(w, fmt.Sprintf("No such container %s", name), http.StatusNotFound)
+		elapsed := time.Since(start)
+		log.Infof("swarm: getContainerJSON (container not found) took time %s", elapsed.String())
 		return
 	}
 
 	if !container.Engine.IsHealthy() {
 		httpError(w, fmt.Sprintf("Container %s running on unhealthy node %s", name, container.Engine.Name), http.StatusInternalServerError)
+		elapsed := time.Since(start)
+		log.Infof("swarm: getContainerJSON (engine not healthy) took time %s", elapsed.String())
 		return
 	}
 
 	con, err := container.Engine.InspectContainer(container.ID)
 	if err != nil {
 		httpError(w, err.Error(), http.StatusInternalServerError)
+		elapsed := time.Since(start)
+		log.Infof("swarm: getContainerJSON (container inspect error) took time %s", elapsed.String())
 		return
 	}
 
@@ -607,6 +617,8 @@ func getContainerJSON(c *context, w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(con)
+	elapsed := time.Since(start)
+	log.Infof("swarm: getContainerJSON (ran successfully) took time %s", elapsed.String())
 }
 
 // POST /containers/create
